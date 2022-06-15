@@ -1,0 +1,4 @@
+.history
+**/*.hi
+**/*.o
+Main
