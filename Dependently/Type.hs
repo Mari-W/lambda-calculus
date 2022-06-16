@@ -1,6 +1,6 @@
 module Dependently.Type where
 
-import Control.Monad
+import Control.Monad ( unless )
 import Dependently.Ast
   ( Binders,
     DecExpr (..),
@@ -24,7 +24,7 @@ typeOf = typeInf 0
 typeInf :: Binders -> Env -> InfExpr -> Result Value
 typeInf i env Star = return VStar
 typeInf i env (Pi dom dec) = do
-  typeDec i env dec VStar
+  typeDec i env dom VStar
   typeDec (i + 1) ((Local i, evalDec dom []) : env) (subst (Free (Local i)) dec) VStar
   return VStar
 typeInf i env (Ann dec ann) = do
@@ -43,14 +43,12 @@ typeInf i env (App lam arg) =
         typeDec i env arg v
         return (f (evalDec arg []))
       _ -> raise ("type mismatch: expected dependent function, got " ++ show (quote w))
-typeInf i env (Bound j) = raise ("unreachable: bound variable " ++ show j ++ " should have been substituted by now")
+typeInf i env (Bound j) = raise ("unresolved: unbound variable " ++ show j ++ " should have been substituted by now")
 
 typeDec :: Binders -> Env -> DecExpr -> Value -> Result ()
 typeDec i env (InfExpr inf) v = do
   w <- typeInf i env inf
-  let p = quote v
-  let q = quote w
-  unless (p == q) (raise ("type mismatch: expected " ++ show p ++ ", got " ++ show q))
+  unless (quote v == quote w) (raise ("type mismatch: expected " ++ show (quote v) ++ ", got " ++ show (quote w)))
 typeDec i env (Lam lam) (VPi v f) = typeDec (i + 1) ((Local i, v) : env) (subst (Free (Local i)) lam) (f (VNeutral (NFree (Local i))))
 typeDec i env (Lam lam) v = raise ("type mismatch: expected function, got " ++ show (quote v))
 

@@ -17,7 +17,7 @@ evalInf :: InfExpr -> Ctx -> Value
 evalInf Star ctx = VStar
 evalInf (Pi dom dec) ctx = VPi (evalDec dom ctx) (\x -> evalDec dec (x : ctx))
 evalInf (Ann dec _) ctx = evalDec dec ctx
-evalInf (Free n) _ = VNeutral (NFree n)
+evalInf (Free n) ctx = VNeutral (NFree n)
 evalInf (Bound i) ctx = ctx !! i
 evalInf (App lam app) ctx = do
   let e = evalInf lam ctx

@@ -1,23 +1,34 @@
 module Main where
 
-import Dependently.Ast (DecExpr, InfExpr, Result)
+import Dependently.Ast (DecExpr (..), Ident (..), InfExpr (..), Neutral (..), Result, Value (..))
 import Dependently.Eval (eval)
 import Dependently.Quote (quote)
 import Dependently.Type (Env, typeOf)
-import Simply.Ast (DecExpr, InfExpr, Result)
-import Simply.Eval (eval)
-import Simply.Quote (quote)
-import Simply.Type (Env, typeOf)
 
-simply :: Simply.Ast.InfExpr -> Simply.Ast.Result Simply.Ast.DecExpr
-simply inf = do
-  Simply.Type.typeOf [] inf
-  Right (Simply.Quote.quote (Simply.Eval.eval inf))
-
-dependently :: Dependently.Ast.InfExpr -> Dependently.Ast.Result Dependently.Ast.DecExpr
+dependently :: InfExpr -> Result DecExpr
 dependently inf = do
-  Dependently.Type.typeOf [] inf
-  Right (Dependently.Quote.quote (Dependently.Eval.eval inf))
+  typeOf [(Global "Bool", VStar), (Global "False", VNeutral (NFree (Global "Bool")))] inf
+  Right (quote (eval inf))
+
+e :: InfExpr
+-- e = (\x -> x :: (fa. x::* : x)) Bool False
+e =
+  App
+    ( App
+        ( Ann
+            (Lam (InfExpr (Bound 0)))
+            ( InfExpr
+                ( Pi
+                    (InfExpr Star)
+                    (InfExpr (Bound 0))
+                )
+            )
+        )
+        (InfExpr (Free (Global "Bool")))
+    )
+    (InfExpr (Free (Global "False")))
 
 main :: IO ()
-main = print ()
+main = case dependently e of
+  Right e -> print e
+  Left e -> print ("[error] " ++ e)
