@@ -1,17 +1,17 @@
 module Dependently.Ast where
 
-data InfExpr
+data SynExpr
   = Star
-  | Pi DecExpr DecExpr
-  | Ann DecExpr DecExpr
+  | Pi ChkExpr ChkExpr
+  | Ann ChkExpr ChkExpr
   | Bound Int
   | Free Ident
-  | App InfExpr DecExpr
+  | App SynExpr ChkExpr
   deriving (Show, Eq)
 
-data DecExpr
-  = InfExpr InfExpr
-  | Lam DecExpr
+data ChkExpr
+  = SynExpr SynExpr
+  | Lam ChkExpr
   deriving (Show, Eq)
 
 data Value

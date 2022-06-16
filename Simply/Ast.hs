@@ -9,16 +9,16 @@ data Type
   | TFun Type Type
   deriving (Show, Eq)
 
-data InfExpr
-  = Ann DecExpr Type
+data SynExpr
+  = Ann ChkExpr Type
   | Bound Int
   | Free Ident
-  | App InfExpr DecExpr
+  | App SynExpr ChkExpr
   deriving (Show, Eq)
 
-data DecExpr
-  = InfExpr InfExpr
-  | Lam DecExpr
+data ChkExpr
+  = SynExpr SynExpr
+  | Lam ChkExpr
   deriving (Show, Eq)
 
 data Value

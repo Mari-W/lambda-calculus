@@ -1,9 +1,9 @@
 module Simply.Type where
 
 import Simply.Ast
-  ( DecExpr (..),
+  ( ChkExpr (..),
     Ident (Local),
-    InfExpr (..),
+    SynExpr (..),
     Kind (..),
     Type (..), Result, Binders
   )
@@ -29,40 +29,40 @@ kind env (TFun lam arg) Star =
     kind env lam Star
     kind env arg Star
 
-typeOf :: Env -> InfExpr -> Result Type
-typeOf = typeInf 0
+typeOf :: Env -> SynExpr -> Result Type
+typeOf = typeSyn 0
 
-typeInf :: Binders -> Env -> InfExpr -> Result Type
-typeInf i env (Ann dec ty) = do
+typeSyn :: Binders -> Env -> SynExpr -> Result Type
+typeSyn i env (Ann chk ty) = do
   kind env ty Star
-  typeDec i env dec ty
+  typeChk i env chk ty
   return ty
-typeInf i env (Free ident) = case lookup ident env of
+typeSyn i env (Free ident) = case lookup ident env of
   Just (Type ty) -> return ty
   _ -> raise ("unresolved: unknown ident " ++ show ident)
-typeInf i env (App lam arg) =
+typeSyn i env (App lam arg) =
   do
-    ty <- typeInf i env lam
+    ty <- typeSyn i env lam
     case ty of
       TFun from to -> do
-        typeDec i env arg from
+        typeChk i env arg from
         return from
       _ -> raise ("type mismatch: expected function, got " ++ show ty)
-typeInf i env (Bound j) = raise ("unreachable: bound variable " ++ show j ++ " should have been substituted by now")
+typeSyn i env (Bound j) = raise ("unreachable: bound variable " ++ show j ++ " should have been substituted by now")
 
-typeDec :: Binders -> Env -> DecExpr -> Type -> Result ()
-typeDec i env (InfExpr inf) ty = do
-  ity <- typeInf i env inf
+typeChk :: Binders -> Env -> ChkExpr -> Type -> Result ()
+typeChk i env (SynExpr syn) ty = do
+  ity <- typeSyn i env syn
   unless (ty == ity) (raise ("type mismatch: expected " ++ show ty ++ ", got " ++ show ity))
-typeDec i env (Lam lam) (TFun from to) = typeDec (i + 1) ((Local i, Type from) : env) (substDec 0 (Free (Local i)) lam) to
-typeDec i env (Lam lam) ty = raise ("type mismatch: expected function, got " ++ show ty)
+typeChk i env (Lam lam) (TFun from to) = typeChk (i + 1) ((Local i, Type from) : env) (substChk 0 (Free (Local i)) lam) to
+typeChk i env (Lam lam) ty = raise ("type mismatch: expected function, got " ++ show ty)
 
-substDec :: Binders -> InfExpr -> DecExpr -> DecExpr
-substDec i f (InfExpr inf) = InfExpr (substInf i f inf)
-substDec i f (Lam lam) = Lam (substDec (i + 1) f lam)
+substChk :: Binders -> SynExpr -> ChkExpr -> ChkExpr
+substChk i f (SynExpr syn) = SynExpr (substSyn i f syn)
+substChk i f (Lam lam) = Lam (substChk (i + 1) f lam)
 
-substInf :: Binders -> InfExpr -> InfExpr -> InfExpr
-substInf i f (Ann dec ty) = Ann (substDec i f dec) ty
-substInf i f (Bound j) = if i == j then f else Bound j
-substInf i f (Free id) = Free id
-substInf i f (App inf dec) = App (substInf i f inf) (substDec i f dec)
+substSyn :: Binders -> SynExpr -> SynExpr -> SynExpr
+substSyn i f (Ann chk ty) = Ann (substChk i f chk) ty
+substSyn i f (Bound j) = if i == j then f else Bound j
+substSyn i f (Free id) = Free id
+substSyn i f (App syn chk) = App (substSyn i f syn) (substChk i f chk)

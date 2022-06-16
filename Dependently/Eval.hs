@@ -1,31 +1,31 @@
 module Dependently.Eval where
 
 import Dependently.Ast
-  ( DecExpr (..),
+  ( ChkExpr (..),
     Ident,
-    InfExpr (..),
+    SynExpr (..),
     Neutral (..),
     Value (..),
   )
 
 type Ctx = [Value]
 
-eval :: InfExpr -> Value
-eval inf = evalInf inf []
+eval :: SynExpr -> Value
+eval syn = evalSyn syn []
 
-evalInf :: InfExpr -> Ctx -> Value
-evalInf Star ctx = VStar
-evalInf (Pi dom dec) ctx = VPi (evalDec dom ctx) (\x -> evalDec dec (x : ctx))
-evalInf (Ann dec _) ctx = evalDec dec ctx
-evalInf (Free n) ctx = VNeutral (NFree n)
-evalInf (Bound i) ctx = ctx !! i
-evalInf (App lam app) ctx = do
-  let e = evalInf lam ctx
-  case e of
-    VClos f -> f (evalDec app ctx)
-    VNeutral n -> VNeutral (NApp n (evalDec app ctx))
+evalSyn :: SynExpr -> Ctx -> Value
+evalSyn Star ctx = VStar
+evalSyn (Pi dom range) ctx = VPi (evalChk dom ctx) (\x -> evalChk range (x : ctx))
+evalSyn (Ann chk _) ctx = evalChk chk ctx
+evalSyn (Free n) ctx = VNeutral (NFree n)
+evalSyn (Bound i) ctx = ctx !! i
+evalSyn (App e e') ctx = do
+  let e'' = evalSyn e ctx
+  case e'' of
+    VClos f -> f (evalChk e' ctx)
+    VNeutral n -> VNeutral (NApp n (evalChk e' ctx))
     _ -> error "unreachable: should only be a closure or neutral if type checked"
 
-evalDec :: DecExpr -> Ctx -> Value
-evalDec (InfExpr i) ctx = evalInf i ctx
-evalDec (Lam e) ctx = VClos (\x -> evalDec e (x : ctx))
+evalChk :: ChkExpr -> Ctx -> Value
+evalChk (SynExpr i) ctx = evalSyn i ctx
+evalChk (Lam e) ctx = VClos (\x -> evalChk e (x : ctx))
