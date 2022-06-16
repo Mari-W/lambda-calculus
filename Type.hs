@@ -37,20 +37,20 @@ typeSyn i env (Free ident) = case lookup ident env of
   _ -> raise ("unresolved: unknown ident " ++ show ident)
 typeSyn i env (App e e') =
   do
-    w <- typeSyn i env e
-    case w of
+    e'' <- typeSyn i env e
+    case e'' of
       VPi v f -> do
         typeChk i env e' v
         return (f (evalChk e' []))
-      _ -> raise ("type mismatch: expected dependent function, got " ++ show (quote w))
+      _ -> raise ("type mismatch: expected dependent function, got " ++ show (quote e''))
 typeSyn i env (Bound j) = raise ("unresolved: unbound variable " ++ show j ++ " should have been substituted by now")
 
 typeChk :: Binders -> Env -> ChkExpr -> Value -> Result ()
-typeChk i env (SynExpr syn) v = do
-  w <- typeSyn i env syn
+typeChk i env (SynExpr e) v = do
+  w <- typeSyn i env e
   unless (quote v == quote w) (raise ("type mismatch: expected " ++ show (quote v) ++ ", got " ++ show (quote w)))
 typeChk i env (Lam lam) (VPi v f) = typeChk (i + 1) ((Local i, v) : env) (subst (Free (Local i)) lam) (f (VNeutral (NFree (Local i))))
-typeChk i env (Lam lam) v = raise ("type mismatch: expected function, got " ++ show (quote v))
+typeChk i env (Lam lam) v = raise ("type mismatch: expected function type, got " ++ show (quote v))
 
 subst :: SynExpr -> ChkExpr -> ChkExpr
 subst = substChk 0

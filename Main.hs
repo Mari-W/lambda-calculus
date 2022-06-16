@@ -3,41 +3,35 @@ module Main where
 import Dependently.Ast (ChkExpr (..), Ident (..), Neutral (..), Result, SynExpr (..), Value (..))
 import Dependently.Eval (eval)
 import Dependently.Quote (quote)
+import Dependently.Syntax
+  ( global',
+    lam,
+    star',
+    chk,
+    x,
+    y,
+    (--->),
+    (-->),
+    (@@),
+    (~~),
+  )
 import Dependently.Type (Env, typeOf)
 
-dependently :: SynExpr -> Result ChkExpr
+dependently :: SynExpr -> Result (ChkExpr, ChkExpr)
 dependently syn = do
   let env = [(Global "Bool", VStar), (Global "False", VNeutral (NFree (Global "Bool")))]
-  typeOf env syn
-  Right (quote (eval syn))
+  ty <- typeOf env syn
+  Right (quote (eval syn), quote ty)
 
-dId :: SynExpr
--- dId := (\x -> x :: (fa. x::* : x))
--- -> dId :: (fa. x::*) (y::x).x
-dId =
-  Ann
-    (Lam (SynExpr (Bound 0)))
-    ( SynExpr
-        ( Pi
-            (SynExpr Star)
-            (SynExpr (Bound 0))
-        )
-    )
+-- pid := (lam a -> (lam x -> x) :: (fa a::* : a -> a))
+-- -> pid :: (fa x::*) (y::x).x
+pid = lam (lam x) ~~ (star' --> (x --> y))
 
-e :: SynExpr
--- e := (\x -> x :: (fa. x::* : x)) Bool False
+-- e := (lam a -> (lam x -> x) :: (fa x::* : x)) Bool False
 -- -> False :: Bool
-e =
-  App
-    ( App
-        dId
-        (SynExpr (Free (Global "Bool")))
-    )
-    (SynExpr (Free (Global "False")))
-
+e = (pid @@ global' "Bool") @@ global' "False"
 
 main :: IO ()
-main = case dependently dId of
-  Right e -> print e
+main = case dependently e of
+  Right (e, v) -> print (show e ++ " :: " ++ show v)
   Left e -> print ("[error] " ++ e)
-
